@@ -14,13 +14,20 @@ DECLARE_LOG_CATEGORY_EXTERN(LogMinigame, Verbose, All);
 class AMinigameInteractable;
 class UGameContext;
 
+// Delegates
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnMinigameEndedDelegate);
+
 UCLASS()
 class TOYBOX_API AMinigame : public AActor
 {
 	GENERATED_BODY()
 	
 public:	
+	UPROPERTY()
 	AMinigameInteractable* OwningInteractable;
+
+	UPROPERTY()
+	FOnMinigameEndedDelegate OnMinigameEndedDelegate;
 
 	// Sets default values for this actor's properties
 	AMinigame();

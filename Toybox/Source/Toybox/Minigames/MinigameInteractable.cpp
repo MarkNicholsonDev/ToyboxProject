@@ -89,6 +89,7 @@ void AMinigameInteractable::StartMinigame()
 	}
 
 	Minigame->OwningInteractable = this;
+	Minigame->OnMinigameEndedDelegate.AddDynamic(this, &ThisClass::CleanupMinigame);
 	Minigame->StartMinigame(PlayerController);
 }
 
@@ -98,6 +99,23 @@ void AMinigameInteractable::StopMinigame()
 	{
 		return;
 	}
+
 	Minigame->EndMinigame();
+}
+
+void AMinigameInteractable::CleanupMinigame()
+{
+	if (this->HasAuthority()) 
+	{
+		UE_LOG(LogMinigame, Error, TEXT("%hs - Has Auth"), __FUNCTION__);
+	}
+
+	if (Minigame == nullptr)
+	{
+		return;
+	}
+
+	Minigame->OnMinigameEndedDelegate.Clear();
+	Minigame->Destroy();
 }
 

@@ -35,6 +35,9 @@ protected:
 	UFUNCTION()
 	void StopMinigame();
 
+	UFUNCTION()
+	void CleanupMinigame();
+
 private:
 	UPROPERTY(EditDefaultsOnly)
 	USceneComponent* SceneRootComponent;

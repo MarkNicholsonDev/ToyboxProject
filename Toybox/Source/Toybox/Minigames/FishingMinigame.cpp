@@ -56,7 +56,7 @@ void AFishingMinigame::Tick(float DeltaTime)
 		SwitchMinigameState(EFishingMinigameState::Cleanup);
 		break;
 	case EFishingMinigameState::Cleanup:
-		SwitchMinigameState(EFishingMinigameState::CleanupComplete);
+		Cleanup();
 		break;
 	case EFishingMinigameState::CleanupComplete:
 		break;
@@ -69,4 +69,10 @@ void AFishingMinigame::SwitchMinigameState(EFishingMinigameState NewState)
 {
 	UE_LOG(LogMinigame, Verbose, TEXT("%hs - Minigame state switching from %s to %s"), __FUNCTION__, *UEnum::GetValueAsString(MinigameState), *UEnum::GetValueAsString(NewState));
 	MinigameState = NewState;
+}
+
+void AFishingMinigame::Cleanup()
+{
+	OnMinigameEndedDelegate.Broadcast();
+	//OnMinigameEndedDelegate.Clear();
 }

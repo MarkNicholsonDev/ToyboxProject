@@ -75,7 +75,7 @@ void AToyboxCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 
 		// Interacting
 		EnhancedInputComponent->BindAction(InteractAction, ETriggerEvent::Triggered, this, &AToyboxCharacter::StartInteraction);
-		//EnhancedInputComponent->BindAction(ExitContextAction, ETriggerEvent::Triggered, this, &AToyboxCharacter::MoveInput);
+		EnhancedInputComponent->BindAction(ExitContextAction, ETriggerEvent::Triggered, this, &AToyboxCharacter::ExitContext);
 	}
 	else
 	{

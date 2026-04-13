@@ -127,7 +127,7 @@ void UInteractableComponent::BeginInteraction()
 	}
 
 	// Should add the exit context stuff here
-	PlayerCharacter->OnInteractDelegate.AddDynamic(this, &UInteractableComponent::EndInteraction);
+	PlayerCharacter->ExitContextDelegate.AddDynamic(this, &UInteractableComponent::EndInteraction);
 
 	if (OnInteractionBegin.IsBound())
 	{
@@ -153,7 +153,7 @@ void UInteractableComponent::CancelInteraction()
 	}
 
 	// Should add the exit context stuff here
-	PlayerCharacter->OnInteractDelegate.RemoveDynamic(this, &UInteractableComponent::EndInteraction);
+	PlayerCharacter->ExitContextDelegate.RemoveDynamic(this, &UInteractableComponent::EndInteraction);
 
 	InteractingActor = nullptr;
 	bIsInteractionOngoing = false;
@@ -175,7 +175,7 @@ void UInteractableComponent::EndInteraction()
 	}
 
 	// Should add the exit context stuff here
-	PlayerCharacter->OnInteractDelegate.RemoveDynamic(this, &UInteractableComponent::EndInteraction);
+	PlayerCharacter->ExitContextDelegate.RemoveDynamic(this, &UInteractableComponent::EndInteraction);
 
 	InteractingActor = nullptr;
 	bIsInteractionOngoing = false;

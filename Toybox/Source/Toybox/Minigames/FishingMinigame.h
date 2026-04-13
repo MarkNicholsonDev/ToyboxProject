@@ -34,7 +34,10 @@ protected:
 	virtual void BeginPlay() override;
 
 	void StartMinigame(AToyboxPlayerController* PC) override;
+
 	void EndMinigame() override;
+
+	void Cleanup() override;
 
 private:
 	bool bCompletedMinigame = false;
