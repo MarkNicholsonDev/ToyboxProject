@@ -33,6 +33,11 @@ private:
 	UPROPERTY()
 	UAbilitySystemComponent* ASC;
 
-	UPROPERTY()
+	UPROPERTY(ReplicatedUsing = OnRep_ActiveGameContexts)
 	TArray<FActiveGameContext> ActiveGameContexts;
+
+	UFUNCTION()
+	void OnRep_ActiveGameContexts(const TArray<FActiveGameContext>& OldContexts);
+
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 };

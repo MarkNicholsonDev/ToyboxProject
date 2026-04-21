@@ -23,5 +23,4 @@ public:
 
 	UFUNCTION(Category = "Game Context")
 	static void RemoveGameContext(const UGameContext* GameContext, AToyboxPlayerController* PlayerController);
-
 };

@@ -24,6 +24,8 @@ void AMinigame::BeginPlay()
 
 void AMinigame::StartMinigame(AToyboxPlayerController* PC)
 {
+	UE_LOG(LogMinigame, Warning, TEXT("%hs - HasAuthority: %s"), __FUNCTION__, HasAuthority() ? TEXT("true") : TEXT("false"));
+
 	if (PC == nullptr)
 	{
 		UE_LOG(LogMinigame, Error, TEXT("%hs - Invalid PC provided to minigame, cannot start minigame"), __FUNCTION__);
@@ -38,15 +40,10 @@ void AMinigame::StartMinigame(AToyboxPlayerController* PC)
 		return;
 	}
 
-	PlayerCharacter = Pawn;
-	ULocalPlayer* Player = PlayerController->GetLocalPlayer();
-	if (Player == nullptr)
+	if (HasAuthority()) 
 	{
-		UE_LOG(LogMinigame, Error, TEXT("%hs - Invalid Player fetched from PC, can't add the minigame mapping context"), __FUNCTION__);
-		return;
+		UGameContextLibrary::ApplyGameContext(MinigameContext, PlayerController);
 	}
-
-	UGameContextLibrary::ApplyGameContext(MinigameContext, PlayerController);
 
 	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
@@ -61,7 +58,10 @@ void AMinigame::EndMinigame()
 		return;
 	}
 
-	UGameContextLibrary::RemoveGameContext(MinigameContext, PlayerController);
+	if (HasAuthority())
+	{
+		UGameContextLibrary::RemoveGameContext(MinigameContext, PlayerController);
+	}
 }
 
 void AMinigame::Cleanup()

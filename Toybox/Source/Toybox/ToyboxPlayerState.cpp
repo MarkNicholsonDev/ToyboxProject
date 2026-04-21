@@ -2,6 +2,7 @@
 
 #include "ToyboxPlayerState.h"
 #include "Toybox.h"
+#include "Net/UnrealNetwork.h"
 
 AToyboxPlayerState::AToyboxPlayerState()
 {
@@ -40,4 +41,16 @@ void AToyboxPlayerState::RemoveActiveGameContext(const UGameContext* GameContext
 	{
 		return ActiveGameContext.Context == GameContext;
 	});
+}
+
+void AToyboxPlayerState::OnRep_ActiveGameContexts(const TArray<FActiveGameContext>& OldContexts)
+{
+
+}
+
+void AToyboxPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(AToyboxPlayerState, ActiveGameContexts);
 }

@@ -8,8 +8,12 @@
 #include "ToyboxPlayerState.h"
 #include "Net/UnrealNetwork.h"
 #include "EnhancedInputComponent.h"
+#include "EnhancedInputSubsystems.h"
+#include "GameContextLibrary.h"
 #include "InputActionValue.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "GameFramework/PlayerController.h"
+#include "ToyboxPlayerController.h"
 #include "Toybox.h"
 
 AToyboxCharacter::AToyboxCharacter()
@@ -103,6 +107,25 @@ void AToyboxCharacter::PossessedBy(AController* NewController)
 
 	ASC = AbilitySystemComponent;
 	ASC->InitAbilityActorInfo(ToyboxPlayerState, this);
+
+	// Add default abilities via a game context to the player character
+	if (HasAuthority())
+	{
+		AToyboxPlayerController* PlayerController = Cast<AToyboxPlayerController>(GetController());
+		if (PlayerController == nullptr)
+		{
+			UE_LOG(LogToybox, Error, TEXT("%hs - Invalid player controller fetched"), __FUNCTION__);
+			return;
+		}
+
+		if (DefaultCharacterContext == nullptr)
+		{
+			UE_LOG(LogToybox, Error, TEXT("%hs - Invalid DefaultCharacterContext"), __FUNCTION__);
+			return;
+		}
+
+		UGameContextLibrary::ApplyGameContext(DefaultCharacterContext, PlayerController);
+	}
 }
 
 void AToyboxCharacter::MoveInput(const FInputActionValue& Value)
@@ -192,4 +215,71 @@ void AToyboxCharacter::OnRep_PlayerState()
 
 	ASC = AbilitySystemComponent;
 	ASC->InitAbilityActorInfo(ToyboxPlayerState, this);
+}
+
+void AToyboxCharacter::Client_AddGameContextInputBindings_Implementation(const UGameContext* GameContext, AToyboxPlayerController* PlayerController)
+{
+	AToyboxPlayerState* ToyboxPlayerState = PlayerController->GetPlayerState<AToyboxPlayerState>();
+	if (ToyboxPlayerState == nullptr)
+	{
+		UE_LOG(LogToybox, Error, TEXT("%hs - Invalid PlayerState cast"), __FUNCTION__);
+		return;
+	}
+
+	UAbilitySystemComponent* AbilitySystemComponent = ToyboxPlayerState->GetAbilitySystemComponent();
+	if (AbilitySystemComponent == nullptr)
+	{
+		UE_LOG(LogToybox, Error, TEXT("%hs - Invalid AbilitySystemComponent fetched"), __FUNCTION__);
+		return;
+	}
+
+	ULocalPlayer* LocalPlayer = PlayerController->GetLocalPlayer();
+	if (LocalPlayer == nullptr)
+	{
+		UE_LOG(LogToybox, Error, TEXT("%hs - Invalid LocalPlayer fetched"), __FUNCTION__);
+		return;
+	}
+
+	UEnhancedInputLocalPlayerSubsystem* Subsystem = LocalPlayer->GetSubsystem<UEnhancedInputLocalPlayerSubsystem>();
+	if (Subsystem == nullptr)
+	{
+		UE_LOG(LogToybox, Error, TEXT("%hs - Invalid Subsystem fetched"), __FUNCTION__);
+		return;
+	}
+
+	AToyboxCharacter* ToyboxCharacter = PlayerController->GetPawn<AToyboxCharacter>();
+	if (ToyboxCharacter == nullptr)
+	{
+		UE_LOG(LogToybox, Error, TEXT("%hs - Invalid Character fetched"), __FUNCTION__);
+		return;
+	}
+
+	UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(ToyboxCharacter->InputComponent);
+	if (EnhancedInputComponent == nullptr)
+	{
+		UE_LOG(LogToybox, Error, TEXT("%hs - Invalid EnhancedInputComponent fetched"), __FUNCTION__);
+		return;
+	}
+
+	// Add at priority 1 so any context added IMCs are above the default mapping context
+	Subsystem->AddMappingContext(GameContext->MappingContext, 1);
+	AbilitySystemComponent->AddLooseGameplayTag(GameContext->GameContextTag);
+
+	TArray<uint32> ActionHandles;
+	for (FGameContextAbilityBinding AbilityBinding : GameContext->AbilityBindings)
+	{
+		// This creates a lambda which maps the input action to the activate ability function so we no longer need a direct function reference
+		FEnhancedInputActionEventBinding& ActionBinding = EnhancedInputComponent->BindActionInstanceLambda(AbilityBinding.InputAction, ETriggerEvent::Triggered, [AbilitySystemComponent, Tag = AbilityBinding.AbilityTag](const FInputActionInstance& Instance)
+			{
+				AbilitySystemComponent->TryActivateAbilitiesByTag(FGameplayTagContainer(Tag));
+			});
+
+		UE_LOG(LogToybox, Display, TEXT("%hs - Bound input action: %s to ability: %s"), __FUNCTION__, *AbilityBinding.InputAction->GetName(), *AbilityBinding.AbilityClass->GetName());
+	}
+
+	FActiveGameContext ActiveGameContext;
+	ActiveGameContext.Context = GameContext;
+	ActiveGameContext.GrantedActionHandles = ActionHandles;
+
+	ToyboxPlayerState->AddActiveGameContext(ActiveGameContext);
 }

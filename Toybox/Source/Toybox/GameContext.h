@@ -12,6 +12,24 @@
 #include "GameContext.generated.h"
 
 /**
+ * Stored by the game context to store everything needed for one ability binding
+ */
+USTRUCT(BlueprintType)
+struct FGameContextAbilityBinding
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditDefaultsOnly)
+	TSubclassOf<UGameplayAbility> AbilityClass;
+
+	UPROPERTY(EditDefaultsOnly)
+	UInputAction* InputAction;
+
+	UPROPERTY(EditDefaultsOnly)
+	FGameplayTag AbilityTag;
+};
+
+/**
  * Used to grant a set of gameplay abilities and an IMC to the player with a gameplay tag to track it on the server
  */
 UCLASS()
@@ -20,16 +38,15 @@ class TOYBOX_API UGameContext : public UDataAsset
 	GENERATED_BODY()
 	
 public:
-	UPROPERTY(EditDefaultsOnly, Category = "Abilities")
-	TMap<UInputAction*, TSubclassOf<UGameplayAbility>> AbilityBindings;
+	UPROPERTY(EditDefaultsOnly)
+	TArray<FGameContextAbilityBinding> AbilityBindings;
 
-	UPROPERTY(EditDefaultsOnly, Category = "Abilities")
+	UPROPERTY(EditDefaultsOnly)
 	FGameplayTag GameContextTag;
 
-	UPROPERTY(EditDefaultsOnly, Category = "Abilities")
+	UPROPERTY(EditDefaultsOnly)
 	UInputMappingContext* MappingContext;
 };
-
 
 /**
  * Granted to the player character to track granted game contexts
@@ -44,10 +61,5 @@ struct FActiveGameContext
 	UPROPERTY()
 	const UGameContext* Context;
 
-	UPROPERTY()
-	TArray<FGameplayAbilitySpecHandle> GrantedAbilityHandles;
-
-	// We store the input bindings as uint32s because FEnhancedInputActionEventBinding is not a USTRUCT so it can't be stored in a TArray in the ActiveGameContext, we store the handle of the event binding instead.
-	UPROPERTY()
 	TArray<uint32> GrantedActionHandles;
 };

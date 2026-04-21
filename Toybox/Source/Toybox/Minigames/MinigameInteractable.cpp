@@ -47,6 +47,8 @@ void AMinigameInteractable::Tick(float DeltaTime)
 
 void AMinigameInteractable::StartMinigame()
 {
+	UE_LOG(LogMinigame, Warning, TEXT("%hs - HasAuthority: %s"), __FUNCTION__, HasAuthority() ? TEXT("true") : TEXT("false"));
+
 	if (MinigameClass == nullptr) 
 	{
 		UE_LOG(LogMinigame, Error, TEXT("%hs - No assigned minigame class to create on starting minigame"), __FUNCTION__);

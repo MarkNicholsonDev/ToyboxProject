@@ -13,6 +13,7 @@ class UInputComponent;
 class UAbilitySystemComponent;
 class USkeletalMeshComponent;
 class UCameraComponent;
+class UGameContext;
 class UInputAction;
 struct FInputActionValue;
 
@@ -51,6 +52,9 @@ public:
 
 	/** Returns first person camera component **/
 	UCameraComponent* GetFirstPersonCameraComponent() const { return FirstPersonCameraComponent; }
+
+	UFUNCTION(Client, Reliable)
+	void Client_AddGameContextInputBindings(const UGameContext* GameContext, AToyboxPlayerController* PlayerController);
 
 protected:
 	/** Jump Input Action */
@@ -114,6 +118,9 @@ protected:
 private:
 	UPROPERTY()
 	UAbilitySystemComponent* ASC;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Input")
+	UGameContext* DefaultCharacterContext = nullptr;
 
 	virtual void PossessedBy(AController* NewController) override;
 
