@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
 #include "AbilitySystemInterface.h"
+#include "GameContext.h"
 #include "Logging/LogMacros.h"
 #include "Delegates/DelegateCombinations.h"
 #include "ToyboxCharacter.generated.h"
@@ -45,6 +46,12 @@ public:
 
 	AToyboxCharacter();
 
+	/** Called from Input Actions for interaction input */
+	void StartInteraction(const FInputActionValue& Value);
+
+	/** Called from Input Actions for exiting interactions and closing any UI widget contexts */
+	void ExitContext(const FInputActionValue& Value);
+
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
 
 	/** Returns the first person mesh **/
@@ -54,7 +61,18 @@ public:
 	UCameraComponent* GetFirstPersonCameraComponent() const { return FirstPersonCameraComponent; }
 
 	UFUNCTION(Client, Reliable)
-	void Client_AddGameContextInputBindings(const UGameContext* GameContext, AToyboxPlayerController* PlayerController);
+	void Client_AddGameContextInputBindings(const UGameContext* GameContext, AToyboxPlayerState* TBPlayerState);
+
+	UFUNCTION(Client, Reliable)
+	void Client_RemoveGameContextInputBindings(const UGameContext* GameContext);
+
+	bool GetActiveGameContextActionHandles(const UGameContext* GameContext, FActiveGameContextActionHandles& OutContext);
+
+	void RemoveActiveGameContextAbilityHandles(const UGameContext* GameContext);
+
+	void AddActiveGameContextAbilityHandles(const FActiveGameContextAbilityHandles ActiveGameContextHandles);
+
+	bool GetActiveGameContextAbilityHandles(const UGameContext* GameContext, FActiveGameContextAbilityHandles& OutContext);
 
 protected:
 	/** Jump Input Action */
@@ -87,12 +105,6 @@ protected:
 	/** Called from Input Actions for looking input */
 	void LookInput(const FInputActionValue& Value);
 
-	/** Called from Input Actions for interaction input */
-	void StartInteraction(const FInputActionValue& Value);
-
-	/** Called from Input Actions for exiting interactions and closing any UI widget contexts */
-	void ExitContext(const FInputActionValue& Value);
-
 	/** Handles aim inputs from either controls or UI interfaces */
 	UFUNCTION(BlueprintCallable, Category="Input")
 	virtual void DoAim(float Yaw, float Pitch);
@@ -122,8 +134,21 @@ private:
 	UPROPERTY(EditDefaultsOnly, Category = "Input")
 	UGameContext* DefaultCharacterContext = nullptr;
 
+	// Not replicated - stores input binding handles for client side cleanup
+	TArray<FActiveGameContextActionHandles> LocalGameContexts;
+
+	// Not replicated - stores gameplay ability spec handles for server side cleanup
+	TArray<FActiveGameContextAbilityHandles> ServerGameContexts;
+
+	bool IsGameContextActive(const UGameContext* GameContext);
+
+	UFUNCTION(Server, Reliable)
+	void Server_AddDefaultGameContext();
+
 	virtual void PossessedBy(AController* NewController) override;
 
 	virtual void OnRep_PlayerState() override;
+
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 };
 

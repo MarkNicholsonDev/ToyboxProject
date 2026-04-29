@@ -23,9 +23,9 @@ public:
 
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
 
-	void AddActiveGameContext(FActiveGameContext ActiveGameContext);
-	FActiveGameContext GetActiveGameContext(const UGameContext* GameContext);
+	void AddActiveGameContext(const UGameContext* GameContext);
 	void RemoveActiveGameContext(const UGameContext* GameContext);
+	TArray<const UGameContext*> GetActiveGameContexts();
 
 protected:
 
@@ -33,11 +33,10 @@ private:
 	UPROPERTY()
 	UAbilitySystemComponent* ASC;
 
-	UPROPERTY(ReplicatedUsing = OnRep_ActiveGameContexts)
-	TArray<FActiveGameContext> ActiveGameContexts;
+	UPROPERTY(Replicated)
+	TArray<const UGameContext*> ActiveGameContexts;
 
-	UFUNCTION()
-	void OnRep_ActiveGameContexts(const TArray<FActiveGameContext>& OldContexts);
+	bool bActiveGameContextsDirty = false;
 
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 };

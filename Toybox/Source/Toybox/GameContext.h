@@ -52,14 +52,32 @@ public:
  * Granted to the player character to track granted game contexts
  */
 USTRUCT()
-struct FActiveGameContext
+struct FActiveGameContextActionHandles
 {
 	GENERATED_BODY()
 
-	FActiveGameContext() : Context(nullptr) {}
+	FActiveGameContextActionHandles() : Context(nullptr) {}
 
 	UPROPERTY()
 	const UGameContext* Context;
 
+	// We store the input bindings as uint32s because FEnhancedInputActionEventBinding is not a USTRUCT
+	// so it can't be stored in a TArray in the ActiveGameContext, we store the int representation of the event binding handle instead.
 	TArray<uint32> GrantedActionHandles;
+};
+
+/**
+ * Granted to the player character to store the ability handles for the granted game context
+ */
+USTRUCT()
+struct FActiveGameContextAbilityHandles
+{
+	GENERATED_BODY()
+
+	FActiveGameContextAbilityHandles() : Context(nullptr) {}
+
+	UPROPERTY()
+	const UGameContext* Context;
+
+	TArray<FGameplayAbilitySpecHandle> GrantedAbilityHandles;
 };

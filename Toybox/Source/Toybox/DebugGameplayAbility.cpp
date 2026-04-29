@@ -3,6 +3,7 @@
 #include "DebugGameplayAbility.h"
 #include "Abilities/GameplayAbilityTargetTypes.h"
 #include "Toybox.h"
+#include "ExitContextAbility.h"
 
 UDebugGameplayAbility::UDebugGameplayAbility()
 {
@@ -13,6 +14,7 @@ UDebugGameplayAbility::UDebugGameplayAbility()
 void UDebugGameplayAbility::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)
 {
 	UE_LOG(LogToybox, Warning, TEXT("%hs - Activated Ability - %s"), __FUNCTION__, HasAuthority(&CurrentActivationInfo) ? TEXT("Server") : TEXT("Client"));
+	CommitAbility(Handle, ActorInfo, ActivationInfo);
 	EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
 }
 

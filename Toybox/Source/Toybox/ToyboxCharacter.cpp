@@ -76,15 +76,13 @@ void AToyboxCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 		// Looking/Aiming
 		EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &AToyboxCharacter::LookInput);
 		EnhancedInputComponent->BindAction(MouseLookAction, ETriggerEvent::Triggered, this, &AToyboxCharacter::LookInput);
-
-		// Interacting
-		EnhancedInputComponent->BindAction(InteractAction, ETriggerEvent::Triggered, this, &AToyboxCharacter::StartInteraction);
-		EnhancedInputComponent->BindAction(ExitContextAction, ETriggerEvent::Triggered, this, &AToyboxCharacter::ExitContext);
 	}
 	else
 	{
 		UE_LOG(LogToybox, Error, TEXT("'%s' Failed to find an Enhanced Input Component! This template is built to use the Enhanced Input system. If you intend to use the legacy system, then you will need to update this C++ file."), *GetNameSafe(this));
 	}
+
+	Server_AddDefaultGameContext();
 }
 
 void AToyboxCharacter::PossessedBy(AController* NewController)
@@ -107,25 +105,6 @@ void AToyboxCharacter::PossessedBy(AController* NewController)
 
 	ASC = AbilitySystemComponent;
 	ASC->InitAbilityActorInfo(ToyboxPlayerState, this);
-
-	// Add default abilities via a game context to the player character
-	if (HasAuthority())
-	{
-		AToyboxPlayerController* PlayerController = Cast<AToyboxPlayerController>(GetController());
-		if (PlayerController == nullptr)
-		{
-			UE_LOG(LogToybox, Error, TEXT("%hs - Invalid player controller fetched"), __FUNCTION__);
-			return;
-		}
-
-		if (DefaultCharacterContext == nullptr)
-		{
-			UE_LOG(LogToybox, Error, TEXT("%hs - Invalid DefaultCharacterContext"), __FUNCTION__);
-			return;
-		}
-
-		UGameContextLibrary::ApplyGameContext(DefaultCharacterContext, PlayerController);
-	}
 }
 
 void AToyboxCharacter::MoveInput(const FInputActionValue& Value)
@@ -217,9 +196,16 @@ void AToyboxCharacter::OnRep_PlayerState()
 	ASC->InitAbilityActorInfo(ToyboxPlayerState, this);
 }
 
-void AToyboxCharacter::Client_AddGameContextInputBindings_Implementation(const UGameContext* GameContext, AToyboxPlayerController* PlayerController)
+void AToyboxCharacter::Client_AddGameContextInputBindings_Implementation(const UGameContext* GameContext, AToyboxPlayerState* TBPlayerState)
 {
-	AToyboxPlayerState* ToyboxPlayerState = PlayerController->GetPlayerState<AToyboxPlayerState>();
+	AToyboxPlayerController* PlayerController = Cast<AToyboxPlayerController>(GetController());
+	if (PlayerController == nullptr)
+	{
+		UE_LOG(LogToybox, Error, TEXT("%hs - Invalid PlayerController cast"), __FUNCTION__);
+		return;
+	}
+
+	AToyboxPlayerState* ToyboxPlayerState = TBPlayerState;
 	if (ToyboxPlayerState == nullptr)
 	{
 		UE_LOG(LogToybox, Error, TEXT("%hs - Invalid PlayerState cast"), __FUNCTION__);
@@ -274,12 +260,165 @@ void AToyboxCharacter::Client_AddGameContextInputBindings_Implementation(const U
 				AbilitySystemComponent->TryActivateAbilitiesByTag(FGameplayTagContainer(Tag));
 			});
 
-		UE_LOG(LogToybox, Display, TEXT("%hs - Bound input action: %s to ability: %s"), __FUNCTION__, *AbilityBinding.InputAction->GetName(), *AbilityBinding.AbilityClass->GetName());
+		ActionHandles.Add(ActionBinding.GetHandle());
+		UE_LOG(LogToybox, Verbose, TEXT("%hs - Bound input action: %s to ability: %s"), __FUNCTION__, *AbilityBinding.InputAction->GetName(), *AbilityBinding.AbilityClass->GetName());
 	}
 
-	FActiveGameContext ActiveGameContext;
+	FActiveGameContextActionHandles ActiveGameContext;
 	ActiveGameContext.Context = GameContext;
 	ActiveGameContext.GrantedActionHandles = ActionHandles;
 
-	ToyboxPlayerState->AddActiveGameContext(ActiveGameContext);
+	LocalGameContexts.Add(ActiveGameContext);
+}
+
+void AToyboxCharacter::Client_RemoveGameContextInputBindings_Implementation(const UGameContext* GameContext)
+{
+	AToyboxPlayerController* PlayerController = Cast<AToyboxPlayerController>(GetController());
+	if (PlayerController == nullptr)
+	{
+		UE_LOG(LogToybox, Error, TEXT("%hs - Invalid PlayerController cast"), __FUNCTION__);
+		return;
+	}
+
+	AToyboxPlayerState* ToyboxPlayerState = PlayerController->GetPlayerState<AToyboxPlayerState>();
+	if (ToyboxPlayerState == nullptr)
+	{
+		UE_LOG(LogToybox, Error, TEXT("%hs - Invalid PlayerState cast"), __FUNCTION__);
+		return;
+	}
+
+	UAbilitySystemComponent* AbilitySystemComponent = ToyboxPlayerState->GetAbilitySystemComponent();
+	if (AbilitySystemComponent == nullptr)
+	{
+		UE_LOG(LogToybox, Error, TEXT("%hs - Invalid AbilitySystemComponent fetched"), __FUNCTION__);
+		return;
+	}
+
+	ULocalPlayer* LocalPlayer = PlayerController->GetLocalPlayer();
+	if (LocalPlayer == nullptr)
+	{
+		UE_LOG(LogToybox, Error, TEXT("%hs - Invalid LocalPlayer fetched"), __FUNCTION__);
+		return;
+	}
+
+	UEnhancedInputLocalPlayerSubsystem* Subsystem = LocalPlayer->GetSubsystem<UEnhancedInputLocalPlayerSubsystem>();
+	if (Subsystem == nullptr)
+	{
+		UE_LOG(LogToybox, Error, TEXT("%hs - Invalid Subsystem fetched"), __FUNCTION__);
+		return;
+	}
+
+	AToyboxCharacter* ToyboxCharacter = PlayerController->GetPawn<AToyboxCharacter>();
+	if (ToyboxCharacter == nullptr)
+	{
+		UE_LOG(LogToybox, Error, TEXT("%hs - Invalid Character fetched"), __FUNCTION__);
+		return;
+	}
+
+	UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(ToyboxCharacter->InputComponent);
+	if (EnhancedInputComponent == nullptr)
+	{
+		UE_LOG(LogToybox, Error, TEXT("%hs - Invalid EnhancedInputComponent fetched"), __FUNCTION__);
+		return;
+	}
+
+	// Add at priority 1 so any context added IMCs are above the default mapping context
+	Subsystem->RemoveMappingContext(GameContext->MappingContext);
+	AbilitySystemComponent->RemoveLooseGameplayTag(GameContext->GameContextTag);
+
+	UE_LOG(LogToybox, Verbose, TEXT("%hs - Removed mapping context: %s and loose gameplay tag: %s"), __FUNCTION__, *GameContext->MappingContext->GetName(), *GameContext->GameContextTag.ToString());
+
+	FActiveGameContextActionHandles ActiveGameContext;
+
+	if (!GetActiveGameContextActionHandles(GameContext, ActiveGameContext))
+	{
+		UE_LOG(LogToybox, Error, TEXT("%hs - Cannot find the active game context for game context: %s"), __FUNCTION__, *GameContext->MappingContext->GetName());
+		return;
+	}
+
+	for (uint32 ActionHandle : ActiveGameContext.GrantedActionHandles)
+	{
+		EnhancedInputComponent->RemoveBindingByHandle(ActionHandle);
+		UE_LOG(LogToybox, Verbose, TEXT("%hs - Removed input action handle: %d from ActiveGameContext for: %s"), __FUNCTION__, ActionHandle, *GameContext->GetName());
+	}
+
+	LocalGameContexts.RemoveAll([GameContext](const FActiveGameContextActionHandles& Context)
+		{
+			return Context.Context == GameContext;
+		});
+}
+
+bool AToyboxCharacter::GetActiveGameContextActionHandles(const UGameContext* GameContext, FActiveGameContextActionHandles& OutContext)
+{
+	for (FActiveGameContextActionHandles& ActiveGameContext : LocalGameContexts) 
+	{
+		if (ActiveGameContext.Context == GameContext)
+		{
+			OutContext = ActiveGameContext;
+			return true;
+		}
+	}
+	return false;
+}
+
+void AToyboxCharacter::RemoveActiveGameContextAbilityHandles(const UGameContext* GameContext)
+{
+	ServerGameContexts.RemoveAll([GameContext](const FActiveGameContextAbilityHandles& Context)
+		{
+			return Context.Context == GameContext;
+		});
+}
+
+void AToyboxCharacter::AddActiveGameContextAbilityHandles(FActiveGameContextAbilityHandles ActiveGameContextHandles)
+{
+	ServerGameContexts.Add(ActiveGameContextHandles);
+}
+
+bool AToyboxCharacter::IsGameContextActive(const UGameContext* GameContext)
+{
+	for (FActiveGameContextActionHandles& LocalGameContext : LocalGameContexts)
+	{
+		if (LocalGameContext.Context == GameContext) 
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+bool AToyboxCharacter::GetActiveGameContextAbilityHandles(const UGameContext* GameContext, FActiveGameContextAbilityHandles& OutContext)
+{
+	for (FActiveGameContextAbilityHandles& ActiveGameContext : ServerGameContexts)
+	{
+		if (ActiveGameContext.Context == GameContext)
+		{
+			OutContext = ActiveGameContext;
+			return true;
+		}
+	}
+	return false;
+}
+
+void AToyboxCharacter::Server_AddDefaultGameContext_Implementation()
+{
+	// Add default abilities via a game context to the player character
+	AToyboxPlayerController* PlayerController = Cast<AToyboxPlayerController>(GetController());
+	if (PlayerController == nullptr)
+	{
+		UE_LOG(LogToybox, Error, TEXT("%hs - Invalid player controller fetched"), __FUNCTION__);
+		return;
+	}
+
+	if (DefaultCharacterContext == nullptr)
+	{
+		UE_LOG(LogToybox, Error, TEXT("%hs - Invalid DefaultCharacterContext"), __FUNCTION__);
+		return;
+	}
+
+	UGameContextLibrary::ApplyGameContext(DefaultCharacterContext, PlayerController);
+}
+
+void AToyboxCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 }

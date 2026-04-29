@@ -53,5 +53,4 @@ private:
 
 	UPROPERTY()
 	AMinigame* Minigame;
-
 };

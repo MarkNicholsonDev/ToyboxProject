@@ -13,6 +13,7 @@ AMinigame::AMinigame()
 {
  	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
+	bReplicates = true;
 }
 
 // Called when the game starts or when spawned
@@ -33,12 +34,6 @@ void AMinigame::StartMinigame(AToyboxPlayerController* PC)
 	}
 
 	PlayerController = PC;
-	AToyboxCharacter* Pawn = PlayerController->GetPawn<AToyboxCharacter>();
-	if (Pawn == nullptr)
-	{
-		UE_LOG(LogMinigame, Error, TEXT("%hs - Invalid pawn fetched from PC, cannot start minigame"), __FUNCTION__);
-		return;
-	}
 
 	if (HasAuthority()) 
 	{
@@ -51,16 +46,16 @@ void AMinigame::StartMinigame(AToyboxPlayerController* PC)
 
 void AMinigame::EndMinigame()
 {
-	ULocalPlayer* Player = PlayerController->GetLocalPlayer();
-	if (Player == nullptr)
+	if (PlayerController != nullptr)
 	{
-		UE_LOG(LogMinigame, Error, TEXT("%hs - Invalid Player fetched from PC, can't remove the minigame mapping context"), __FUNCTION__);
-		return;
+		if (HasAuthority())
+		{
+			UGameContextLibrary::RemoveGameContext(MinigameContext, PlayerController);
+		}
 	}
-
-	if (HasAuthority())
+	else 
 	{
-		UGameContextLibrary::RemoveGameContext(MinigameContext, PlayerController);
+		UE_LOG(LogMinigame, Warning, TEXT("%hs - Invalid PlayerController, cannot remove game context from player if it still exists"), __FUNCTION__);
 	}
 }
 

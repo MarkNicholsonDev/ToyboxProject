@@ -1,6 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "ToyboxPlayerState.h"
+#include "ToyboxCharacter.h"
 #include "Toybox.h"
 #include "Net/UnrealNetwork.h"
 
@@ -16,36 +17,22 @@ UAbilitySystemComponent* AToyboxPlayerState::GetAbilitySystemComponent() const
 	return ASC;
 }
 
-void AToyboxPlayerState::AddActiveGameContext(FActiveGameContext ActiveGameContext)
+void AToyboxPlayerState::AddActiveGameContext(const UGameContext* GameContext)
 {
-	ActiveGameContexts.Add(ActiveGameContext);
-}
-
-FActiveGameContext AToyboxPlayerState::GetActiveGameContext(const UGameContext* GameContext)
-{
-	for (FActiveGameContext ActiveGameContext : ActiveGameContexts)
-	{
-		if (ActiveGameContext.Context == GameContext)
-		{
-			return ActiveGameContext;
-		}
-	}
-
-	UE_LOG(LogToybox, Warning, TEXT("%hs - Game context not found in the active game contexts, mustn't have been added"), __FUNCTION__);
-	return FActiveGameContext();
+	ActiveGameContexts.Add(GameContext);
 }
 
 void AToyboxPlayerState::RemoveActiveGameContext(const UGameContext* GameContext)
 {
-	ActiveGameContexts.RemoveAll([GameContext](const FActiveGameContext& ActiveGameContext)
-	{
-		return ActiveGameContext.Context == GameContext;
-	});
+	ActiveGameContexts.RemoveAll([GameContext](const UGameContext* ActiveGameContext)
+		{
+			return ActiveGameContext == GameContext;
+		});
 }
 
-void AToyboxPlayerState::OnRep_ActiveGameContexts(const TArray<FActiveGameContext>& OldContexts)
+TArray<const UGameContext*> AToyboxPlayerState::GetActiveGameContexts()
 {
-
+	return ActiveGameContexts;
 }
 
 void AToyboxPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const

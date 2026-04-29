@@ -102,22 +102,23 @@ void AMinigameInteractable::StopMinigame()
 		return;
 	}
 
-	Minigame->EndMinigame();
+	if (this->HasAuthority())
+	{
+		Minigame->EndMinigame();
+	}
 }
 
 void AMinigameInteractable::CleanupMinigame()
 {
-	if (this->HasAuthority()) 
-	{
-		UE_LOG(LogMinigame, Error, TEXT("%hs - Has Auth"), __FUNCTION__);
-	}
-
 	if (Minigame == nullptr)
 	{
 		return;
 	}
 
-	Minigame->OnMinigameEndedDelegate.Clear();
-	Minigame->Destroy();
+	if (this->HasAuthority())
+	{
+		Minigame->OnMinigameEndedDelegate.Clear();
+		Minigame->Destroy();
+		Minigame = nullptr;
+	}
 }
-

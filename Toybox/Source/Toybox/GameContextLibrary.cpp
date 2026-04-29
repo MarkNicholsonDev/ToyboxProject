@@ -49,20 +49,6 @@ void UGameContextLibrary::ApplyGameContext(const UGameContext* GameContext, AToy
 		return;
 	}
 
-	ULocalPlayer* LocalPlayer = PlayerController->GetLocalPlayer();
-	if (LocalPlayer == nullptr)
-	{
-		UE_LOG(LogToybox, Error, TEXT("%hs - Invalid LocalPlayer fetched"), __FUNCTION__);
-		return;
-	}
-
-	UEnhancedInputLocalPlayerSubsystem* Subsystem = LocalPlayer->GetSubsystem<UEnhancedInputLocalPlayerSubsystem>();
-	if (Subsystem == nullptr)
-	{
-		UE_LOG(LogToybox, Error, TEXT("%hs - Invalid Subsystem fetched"), __FUNCTION__);
-		return;
-	}
-
 	AToyboxCharacter* ToyboxCharacter = PlayerController->GetPawn<AToyboxCharacter>();
 	if (ToyboxCharacter == nullptr)
 	{
@@ -70,22 +56,21 @@ void UGameContextLibrary::ApplyGameContext(const UGameContext* GameContext, AToy
 		return;
 	}
 
-	UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(ToyboxCharacter->InputComponent);
-	if (EnhancedInputComponent == nullptr)
-	{
-		UE_LOG(LogToybox, Error, TEXT("%hs - Invalid EnhancedInputComponent fetched"), __FUNCTION__);
-		return;
-	}
-
+	UE_LOG(LogToybox, Verbose, TEXT("%hs - Granting game context: %s"), __FUNCTION__, *GameContext->GetName());
 	AbilitySystemComponent->AddLooseGameplayTag(GameContext->GameContextTag);
 
+	FActiveGameContextAbilityHandles ActiveGameContextHandles;
+	ActiveGameContextHandles.Context = GameContext;
 	for (FGameContextAbilityBinding AbilityBinding : GameContext->AbilityBindings)
 	{
-		AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(AbilityBinding.AbilityClass));
-		UE_LOG(LogToybox, Display, TEXT("%hs - Granted ability: %s"), __FUNCTION__, *AbilityBinding.AbilityClass->GetName());
+		FGameplayAbilitySpecHandle Handle = AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(AbilityBinding.AbilityClass));
+		ActiveGameContextHandles.GrantedAbilityHandles.Add(Handle);
+		UE_LOG(LogToybox, Verbose, TEXT("%hs - Granted ability: %s"), __FUNCTION__, *AbilityBinding.AbilityClass->GetName());
 	}
 
-	ToyboxCharacter->Client_AddGameContextInputBindings(GameContext, PlayerController);
+	ToyboxCharacter->Client_AddGameContextInputBindings(GameContext, ToyboxPlayerState);
+	ToyboxCharacter->AddActiveGameContextAbilityHandles(ActiveGameContextHandles);
+	ToyboxPlayerState->AddActiveGameContext(GameContext);
 }
 
 void UGameContextLibrary::RemoveGameContext(const UGameContext* GameContext, AToyboxPlayerController* PlayerController)
@@ -104,7 +89,7 @@ void UGameContextLibrary::RemoveGameContext(const UGameContext* GameContext, ATo
 
 	if (!PlayerController->HasAuthority())
 	{
-		UE_LOG(LogToybox, Warning, TEXT("%hs - Can only remove a game context on the server"), __FUNCTION__);
+		UE_LOG(LogToybox, Warning, TEXT("%hs - Can only add a game context on the server"), __FUNCTION__);
 		return;
 	}
 
@@ -124,21 +109,7 @@ void UGameContextLibrary::RemoveGameContext(const UGameContext* GameContext, ATo
 
 	if (!AbilitySystemComponent->HasMatchingGameplayTag(GameContext->GameContextTag))
 	{
-		UE_LOG(LogToybox, Warning, TEXT("%hs - Attempted to add GameContext that hasn't been added to the character"), __FUNCTION__);
-		return;
-	}
-
-	ULocalPlayer* LocalPlayer = PlayerController->GetLocalPlayer();
-	if (LocalPlayer == nullptr)
-	{
-		UE_LOG(LogToybox, Error, TEXT("%hs - Invalid LocalPlayer fetched"), __FUNCTION__);
-		return;
-	}
-
-	UEnhancedInputLocalPlayerSubsystem* Subsystem = LocalPlayer->GetSubsystem<UEnhancedInputLocalPlayerSubsystem>();
-	if (Subsystem == nullptr)
-	{
-		UE_LOG(LogToybox, Error, TEXT("%hs - Invalid Subsystem fetched"), __FUNCTION__);
+		UE_LOG(LogToybox, Warning, TEXT("%hs - Attempted to remove GameContext that hasn't been added"), __FUNCTION__);
 		return;
 	}
 
@@ -149,28 +120,24 @@ void UGameContextLibrary::RemoveGameContext(const UGameContext* GameContext, ATo
 		return;
 	}
 
-	UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(ToyboxCharacter->InputComponent);
-	if (EnhancedInputComponent == nullptr)
+	UE_LOG(LogToybox, Verbose, TEXT("%hs - Removing game context: %s"), __FUNCTION__, *GameContext->GetName());
+	AbilitySystemComponent->RemoveLooseGameplayTag(GameContext->GameContextTag);
+
+	FActiveGameContextAbilityHandles ActiveGameContextHandles;
+
+	if (!ToyboxCharacter->GetActiveGameContextAbilityHandles(GameContext, ActiveGameContextHandles))
 	{
-		UE_LOG(LogToybox, Error, TEXT("%hs - Invalid EnhancedInputComponent fetched"), __FUNCTION__);
+		UE_LOG(LogToybox, Error, TEXT("%hs - Cannot find the active game context for game context: %s"), __FUNCTION__, *GameContext->MappingContext->GetName());
 		return;
 	}
 
-	// Add at priority 1 so any context added IMCs are above the default mapping context
-	Subsystem->RemoveMappingContext(GameContext->MappingContext);
-	AbilitySystemComponent->RemoveLooseGameplayTag(GameContext->GameContextTag);
-
-	FActiveGameContext ActiveGameContext = ToyboxPlayerState->GetActiveGameContext(GameContext);
-
-	for (uint32 ActionHandle : ActiveGameContext.GrantedActionHandles)
+	for (FGameplayAbilitySpecHandle AbilityHandle : ActiveGameContextHandles.GrantedAbilityHandles)
 	{
-		EnhancedInputComponent->RemoveBindingByHandle(ActionHandle);
+		AbilitySystemComponent->ClearAbility(AbilityHandle);
+		UE_LOG(LogToybox, Verbose, TEXT("%hs - Cleared ability: %s"), __FUNCTION__, *AbilityHandle.ToString());
 	}
 
-	/*for (FGameplayAbilitySpecHandle ActiveHandle : ActiveGameContext.GrantedAbilityHandles)
-	{
-		AbilitySystemComponent->ClearAbility(ActiveHandle);
-	}*/
-
+	ToyboxCharacter->Client_RemoveGameContextInputBindings(GameContext);
+	ToyboxCharacter->RemoveActiveGameContextAbilityHandles(GameContext);
 	ToyboxPlayerState->RemoveActiveGameContext(GameContext);
-}
+}	
