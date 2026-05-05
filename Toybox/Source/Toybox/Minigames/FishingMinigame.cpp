@@ -4,7 +4,7 @@
 #include "Minigames/FishingMinigame.h"
 
 // Sets default values
-AFishingMinigame::AFishingMinigame()
+AFishingMinigame::AFishingMinigame() : Super()
 {
 
 }

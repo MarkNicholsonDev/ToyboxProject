@@ -44,7 +44,12 @@ void AMinigame::StartMinigame(AToyboxPlayerController* PC)
 	PrimaryActorTick.bCanEverTick = true;
 }
 
-void AMinigame::EndMinigame()
+void AMinigame::EndMinigame() 
+{
+
+}
+
+void AMinigame::Cleanup()
 {
 	if (PlayerController != nullptr)
 	{
@@ -53,15 +58,13 @@ void AMinigame::EndMinigame()
 			UGameContextLibrary::RemoveGameContext(MinigameContext, PlayerController);
 		}
 	}
-	else 
+	else
 	{
 		UE_LOG(LogMinigame, Warning, TEXT("%hs - Invalid PlayerController, cannot remove game context from player if it still exists"), __FUNCTION__);
 	}
-}
 
-void AMinigame::Cleanup()
-{
-	
+	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
+	PrimaryActorTick.bCanEverTick = false;
 }
 
 // Called every frame

@@ -38,18 +38,18 @@ protected:
 	UFUNCTION()
 	void CleanupMinigame();
 
-private:
 	UPROPERTY(EditDefaultsOnly)
 	USceneComponent* SceneRootComponent;
 
 	UPROPERTY(EditDefaultsOnly)
 	UInteractableComponent* InteractableComponent;
 
-	UPROPERTY(EditDefaultsOnly)
-	UStaticMeshComponent* InteractableMesh;
-
 	UPROPERTY(EditDefaultsOnly, Category = "Minigame")
 	TSubclassOf<AMinigame> MinigameClass;
+
+private:
+	UPROPERTY(EditDefaultsOnly)
+	UStaticMeshComponent* InteractableMesh;
 
 	UPROPERTY()
 	AMinigame* Minigame;

@@ -14,4 +14,11 @@ class TOYBOX_API ASmithingMinigameInteractable : public AMinigameInteractable
 {
 	GENERATED_BODY()
 	
+public:
+	// Sets default values for this actor's properties
+	ASmithingMinigameInteractable();
+
+private:
+	UPROPERTY(EditDefaultsOnly)
+	UStaticMeshComponent* ForgeMesh;
 };

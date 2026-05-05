@@ -93,6 +93,8 @@ void AMinigameInteractable::StartMinigame()
 	Minigame->OwningInteractable = this;
 	Minigame->OnMinigameEndedDelegate.AddDynamic(this, &ThisClass::CleanupMinigame);
 	Minigame->StartMinigame(PlayerController);
+
+	UE_LOG(LogMinigame, Verbose, TEXT("%hs - Minigame started: %s"), __FUNCTION__, *MinigameClass->GetName());
 }
 
 void AMinigameInteractable::StopMinigame()
@@ -117,6 +119,8 @@ void AMinigameInteractable::CleanupMinigame()
 
 	if (this->HasAuthority())
 	{
+		UE_LOG(LogMinigame, Verbose, TEXT("%hs - Destroying minigame: %s"), __FUNCTION__, *Minigame->GetName());
+
 		Minigame->OnMinigameEndedDelegate.Clear();
 		Minigame->Destroy();
 		Minigame = nullptr;

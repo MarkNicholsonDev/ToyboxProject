@@ -8,12 +8,46 @@
 
 DECLARE_LOG_CATEGORY_EXTERN(LogSmithingMinigame, Verbose, All);
 
-/**
- * 
- */
+UENUM()
+enum class ESmithingMinigameState : uint8
+{
+	Idle,
+	Starting,
+	Active,
+	Completed,
+	Cleanup,
+	CleanupComplete,
+};
+
 UCLASS()
 class TOYBOX_API ASmithingMinigame : public AMinigame
 {
 	GENERATED_BODY()
-	
+
+public:
+	// Sets default values for this actor's properties
+	ASmithingMinigame();
+
+	// To be removed - just for testing minigame flow
+	void CompletedMinigame();
+
+	// Called every frame
+	virtual void Tick(float DeltaTime) override;
+
+protected:
+	// Called when the game starts or when spawned
+	virtual void BeginPlay() override;
+
+	void StartMinigame(AToyboxPlayerController* PC) override;
+
+	void EndMinigame() override;
+
+	void Cleanup() override;
+
+private:
+	bool bCompletedMinigame = false;
+
+	ESmithingMinigameState MinigameState = ESmithingMinigameState::Idle;
+
+	void SwitchMinigameState(ESmithingMinigameState NewState);
 };
