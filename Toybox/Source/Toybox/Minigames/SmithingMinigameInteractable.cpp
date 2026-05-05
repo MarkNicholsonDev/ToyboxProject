@@ -1,4 +1,4 @@
 // Copyright 2026 Mark Nicholson. All Rights Reserved.
 
-#include "GameContext.h"
+#include "Minigames/SmithingMinigameInteractable.h"
 
