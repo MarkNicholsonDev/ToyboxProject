@@ -6,6 +6,9 @@
 #include "Minigames/Minigame.h"
 #include "SmithingMinigame.generated.h"
 
+class ASmithingAction;
+class ASmithingWorkpiece;
+
 DECLARE_LOG_CATEGORY_EXTERN(LogSmithingMinigame, Verbose, All);
 
 UENUM()
@@ -45,9 +48,25 @@ protected:
 	void Cleanup() override;
 
 private:
+	UPROPERTY()
 	bool bCompletedMinigame = false;
 
+	UPROPERTY()
 	ESmithingMinigameState MinigameState = ESmithingMinigameState::Idle;
 
+	UPROPERTY(Replicated)
+	ASmithingAction* SmithingAction;
+
+	UPROPERTY(Replicated)
+	ASmithingWorkpiece* SmithingWorkpiece;
+
+	UPROPERTY(EditDefaultsOnly)
+	TSubclassOf<ASmithingAction> SmithingActionClass;
+
+	UPROPERTY(EditDefaultsOnly)
+	TSubclassOf<ASmithingWorkpiece> SmithingWorkpieceClass;
+
 	void SwitchMinigameState(ESmithingMinigameState NewState);
+
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 };

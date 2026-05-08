@@ -1,6 +1,8 @@
 // Copyright 2026 Mark Nicholson. All Rights Reserved.
 
 #include "Minigames/SmithingMinigame.h"
+#include "Minigames/SmithingAction.h"
+#include "Net/UnrealNetwork.h"
 
 DEFINE_LOG_CATEGORY(LogSmithingMinigame);
 
@@ -48,10 +50,32 @@ void ASmithingMinigame::Tick(float DeltaTime)
 		SwitchMinigameState(ESmithingMinigameState::Active);
 		break;
 	case ESmithingMinigameState::Active:
-		if (bCompletedMinigame)
+		if (SmithingWorkpiece == nullptr)
 		{
-			SwitchMinigameState(ESmithingMinigameState::Completed);
+			FActorSpawnParameters SpawnParams;
+			SpawnParams.Owner = this;
+			SmithingWorkpiece = GetWorld()->SpawnActor<ASmithingWorkpiece>(SmithingWorkpieceClass, GetActorTransform(), SpawnParams);
+			if (SmithingWorkpiece == nullptr)
+			{
+				UE_LOG(LogSmithingMinigame, Error, TEXT("%hs - Invalid SmithingWorkpiece spawned"), __FUNCTION__);
+				return;
+			}
 		}
+
+		if (SmithingAction == nullptr)
+		{
+			FActorSpawnParameters SpawnParams;
+			SpawnParams.Owner = this;
+			SmithingAction = GetWorld()->SpawnActor<ASmithingAction>(SmithingActionClass, GetActorTransform(), SpawnParams);
+			if (SmithingAction == nullptr)
+			{
+				UE_LOG(LogSmithingMinigame, Error, TEXT("%hs - Invalid SmithingAction spawned"), __FUNCTION__);
+				return;
+			}
+
+			SmithingAction->SetSmithingWorkpiece(SmithingWorkpiece);
+		}
+
 		break;
 	case ESmithingMinigameState::Completed:
 		SwitchMinigameState(ESmithingMinigameState::Cleanup);
@@ -86,4 +110,12 @@ void ASmithingMinigame::Cleanup()
 void ASmithingMinigame::CompletedMinigame()
 {
 	bCompletedMinigame = true;
+}
+
+void ASmithingMinigame::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(ASmithingMinigame, SmithingAction);
+	DOREPLIFETIME(ASmithingMinigame, SmithingWorkpiece);
 }

@@ -3,7 +3,7 @@
 #include "Minigames/SmithingInteractAbility.h"
 #include "Abilities/GameplayAbilityTargetTypes.h"
 #include "Runtime/Engine/Classes/Kismet/GameplayStatics.h"
-#include "SmithingMinigame.h"
+#include "SmithingAction.h"
 
 USmithingInteractAbility::USmithingInteractAbility()
 {
@@ -13,26 +13,27 @@ USmithingInteractAbility::USmithingInteractAbility()
 
 void USmithingInteractAbility::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)
 {
-	UE_LOG(LogSmithingMinigame, Warning, TEXT("%hs - Activated Ability - %s"), __FUNCTION__, HasAuthority(&CurrentActivationInfo) ? TEXT("Server") : TEXT("Client"));
+	UE_LOG(LogSmithingMinigame, Verbose, TEXT("%hs - Activated Ability - %s"), __FUNCTION__, HasAuthority(&CurrentActivationInfo) ? TEXT("Server") : TEXT("Client"));
 
 	// Note: Will be switched to fetching the interacted object from the player instead rather than GetActorOfClass as it's more costly - Fine for a test
-	AActor* FoundActor = UGameplayStatics::GetActorOfClass(GetWorld(), ASmithingMinigame::StaticClass());
+	AActor* FoundActor = UGameplayStatics::GetActorOfClass(GetWorld(), ASmithingAction::StaticClass());
 	if (FoundActor == nullptr)
 	{
-		UE_LOG(LogSmithingMinigame, Error, TEXT("%hs - No smithing minigame could be found"), __FUNCTION__);
+		UE_LOG(LogSmithingMinigame, Error, TEXT("%hs - No smithing action could be found"), __FUNCTION__);
 		return;
 	}
 
-	ASmithingMinigame* Minigame = Cast<ASmithingMinigame>(FoundActor);
-	if (Minigame == nullptr)
+	ASmithingAction* SmithingAction = Cast<ASmithingAction>(FoundActor);
+	if (SmithingAction == nullptr)
 	{
-		UE_LOG(LogSmithingMinigame, Error, TEXT("%hs - Invalid Minigame cast"), __FUNCTION__);
+		UE_LOG(LogSmithingMinigame, Error, TEXT("%hs - Invalid SmithingAction cast"), __FUNCTION__);
 		return;
 	}
-
-	Minigame->CompletedMinigame();
 
 	CommitAbility(Handle, ActorInfo, ActivationInfo);
+
+	SmithingAction->PerformAction();
+
 	EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
 }
 
@@ -40,5 +41,5 @@ void USmithingInteractAbility::EndAbility(const FGameplayAbilitySpecHandle Handl
 {
 	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
 
-	UE_LOG(LogSmithingMinigame, Warning, TEXT("%hs - Ability Ended - %s"), __FUNCTION__, HasAuthority(&CurrentActivationInfo) ? TEXT("Server") : TEXT("Client"));
+	UE_LOG(LogSmithingMinigame, Verbose, TEXT("%hs - Ability Ended - %s"), __FUNCTION__, HasAuthority(&CurrentActivationInfo) ? TEXT("Server") : TEXT("Client"));
 }
